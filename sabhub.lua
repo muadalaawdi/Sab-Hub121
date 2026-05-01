@@ -1,4 +1,5 @@
 -- [[ ronaldothegond real sab hub ]] --
+-- UPDATED GITHUB LINK
 local GITHUB_LINK = "https://githubusercontent.com"
 
 local Players = game:GetService("Players")
@@ -75,4 +76,3 @@ makeBtn("REJOIN + AUTOLOAD", 50, SafeRejoin, Color3.fromRGB(0, 150, 100))
 makeBtn("ronaldothegond", 95, function() 
     LocalPlayer:Kick("ronaldothegond saved ur brainrots from getting stolen") 
 end, Color3.fromRGB(150, 0, 255))
-
