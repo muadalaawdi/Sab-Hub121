@@ -9,17 +9,36 @@ local Workspace = game:GetService("Workspace")
 -- // GLOBAL STATE
 _G.ESP = false
 _G.Xray = false
+_G.TimerESP = false
 _G.AutoAllow = false
 _G.AutoLock = false
 
--- // 1. NOTIFICATIONS
+-- // 1. UTILITIES
 local function Notify(title, text)
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = title; Text = text; Duration = 3;
     })
 end
 
--- // 2. ESP & X-RAY
+-- // 2. TIMER ESP (Fixed Deep Scan)
+RunService.RenderStepped:Connect(function()
+    if _G.TimerESP then
+        for _, v in pairs(Workspace:GetDescendants()) do
+            if v:IsA("BillboardGui") then
+                v.AlwaysOnTop = true
+                v.Enabled = true
+                for _, child in pairs(v:GetChildren()) do
+                    if child:IsA("TextLabel") and (child.Text:find(":") or child.Text:match("%d")) then
+                        child.Visible = true
+                        child.TextColor3 = Color3.fromRGB(255, 0, 0)
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- // 3. PLAYER ESP & X-RAY
 local function CreateESP(p)
     local h = Instance.new("Highlight")
     h.Name = "ESP_" .. p.Name
@@ -44,38 +63,31 @@ local function ToggleXray()
     end
 end
 
--- // 3. SMART TOGGLE ENGINE (Fix for "Button" style bases)
+-- // 4. BASE AUTOMATION (FORCE OVERRIDE)
 RunService.Heartbeat:Connect(function()
-    if _G.AutoLock or _G.AutoAllow then
+    if _G.AutoAllow or _G.AutoLock then
         for _, v in pairs(Workspace:GetDescendants()) do
-            -- Look for ClickDetectors OR ProximityPrompts
-            if v:IsA("ClickDetector") or v:IsA("ProximityPrompt") then
-                local parent = v.Parent
-                local n = parent.Name:lower()
-                
-                -- AUTO ALLOW logic (Only clicks if not already green/on)
-                if _G.AutoAllow and (n:find("allow") or n:find("friend")) then
-                    if parent.Color ~= Color3.fromRGB(0, 255, 0) then -- If not green
-                        if v:IsA("ClickDetector") then fireclickdetector(v) else fireproximityprompt(v) end
-                    end
+            -- FORCE ALLOW FRIENDS
+            if _G.AutoAllow then
+                if v:IsA("BoolValue") and (v.Name:lower():find("allow") or v.Name:lower():find("friend")) then
+                    v.Value = true -- Directly force the game setting to true
+                elseif v:IsA("ClickDetector") and v.Parent.Name:lower():find("allow") then
+                    fireclickdetector(v)
                 end
-                
-                -- AUTO LOCK logic (Only clicks if base is open/red)
-                if _G.AutoLock and (n:find("lock") or n:find("close")) then
-                    if parent.Color ~= Color3.fromRGB(255, 0, 0) then -- If not red
-                        if v:IsA("ClickDetector") then fireclickdetector(v) else fireproximityprompt(v) end
-                    end
-                end
+            end
+            -- AUTO LOCK
+            if _G.AutoLock and v:IsA("ClickDetector") and (v.Parent.Name:lower():find("lock") or v.Parent.Name:lower():find("close")) then
+                fireclickdetector(v)
             end
         end
     end
 end)
 
--- // 4. GUI SETUP
+-- // 5. GUI SETUP
 if PlayerGui:FindFirstChild("RonaldRealHub") then PlayerGui.RonaldRealHub:Destroy() end
 local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "RonaldRealHub"; sg.ResetOnSpawn = false
 local frame = Instance.new("Frame", sg)
-frame.Size = UDim2.fromOffset(260, 400); frame.Position = UDim2.fromScale(0.5, 0.5); frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Size = UDim2.fromOffset(260, 420); frame.Position = UDim2.fromScale(0.5, 0.5); frame.AnchorPoint = Vector2.new(0.5, 0.5)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20); frame.Active, frame.Draggable = true, true
 Instance.new("UIStroke", frame).Color = Color3.fromRGB(0, 200, 255); Instance.new("UICorner", frame)
 
@@ -87,32 +99,11 @@ local function makeBtn(txt, y, cb, color)
 end
 
 makeBtn("REJOIN SERVER", 50, function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end, Color3.fromRGB(0, 150, 100))
+makeBtn("PLAYER ESP: OFF", 95, function(b) _G.ESP = not _G.ESP b.Text = "ESP: " .. (_G.ESP and "ON" or "OFF") end)
+makeBtn("X-RAY Walls: OFF", 140, function(b) ToggleXray() b.Text = "X-RAY: " .. (_G.Xray and "ON" or "OFF") end)
+makeBtn("TIMER ESP: OFF", 185, function(b) _G.TimerESP = not _G.TimerESP b.Text = "TIMER ESP: " .. (_G.TimerESP and "ON" or "OFF") end)
+makeBtn("FORCE ALLOW FRIENDS: OFF", 230, function(b) _G.AutoAllow = not _G.AutoAllow b.Text = "FORCE ALLOW: " .. (_G.AutoAllow and "ON" or "OFF") end)
+makeBtn("AUTO-LOCK BASE: OFF", 275, function(b) _G.AutoLock = not _G.AutoLock b.Text = "AUTO-LOCK: " .. (_G.AutoLock and "ON" or "OFF") end)
+makeBtn("ronaldothegond", 370, function() LocalPlayer:Kick("ronaldothegond saved ur brainrots from getting stolen") end, Color3.fromRGB(150, 0, 255))
 
-makeBtn("PLAYER ESP: OFF", 90, function(b) 
-    _G.ESP = not _G.ESP 
-    b.Text = "PLAYER ESP: " .. (_G.ESP and "ON" or "OFF")
-    b.BackgroundColor3 = _G.ESP and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(0, 200, 255)
-end)
-
-makeBtn("X-RAY Walls: OFF", 130, function(b) 
-    ToggleXray() 
-    b.Text = "X-RAY Walls: " .. (_G.Xray and "ON" or "OFF")
-end)
-
-makeBtn("AUTO-ALLOW FRIENDS: OFF", 170, function(b)
-    _G.AutoAllow = not _G.AutoAllow
-    b.Text = "AUTO-ALLOW: " .. (_G.AutoAllow and "ON" or "OFF")
-    b.BackgroundColor3 = _G.AutoAllow and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(0, 200, 255)
-end)
-
-makeBtn("AUTO-LOCK BASE: OFF", 210, function(b)
-    _G.AutoLock = not _G.AutoLock
-    b.Text = "AUTO-LOCK: " .. (_G.AutoLock and "ON" or "OFF")
-    b.BackgroundColor3 = _G.AutoLock and Color3.fromRGB(200, 0, 50) or Color3.fromRGB(0, 200, 255)
-end)
-
-makeBtn("ronaldothegond", 350, function() 
-    LocalPlayer:Kick("ronaldothegond saved ur brainrots from getting stolen") 
-end, Color3.fromRGB(150, 0, 255))
-
-Notify("Ronald Hub", "V101.1 Loaded - Smart Toggle Active")
+Notify("Ronald Hub", "V102 Fixed & Ready!")
