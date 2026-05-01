@@ -5,29 +5,21 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local TeleportService = game:GetService("TeleportService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local Lighting = game:GetService("Lighting")
 
 -- // GLOBAL STATE
 _G.ESP = false
 _G.Xray = false
-_G.TimerESP = false
 _G.AutoAllow = false
 _G.AutoLock = false
 
--- // 1. UTILITIES
+-- // 1. NOTIFICATIONS
 local function Notify(title, text)
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = title; Text = text; Duration = 3;
     })
 end
 
-local function PlayDing()
-    local s = Instance.new("Sound", Workspace)
-    s.SoundId = "rbxassetid://4590662766"
-    s:Play() task.wait(1) s:Destroy()
-end
-
--- // 2. ESP & X-RAY ENGINE
+-- // 2. ESP & X-RAY
 local function CreateESP(p)
     local h = Instance.new("Highlight")
     h.Name = "ESP_" .. p.Name
@@ -52,19 +44,26 @@ local function ToggleXray()
     end
 end
 
--- // 3. BASE AUTOMATION (REWRITTEN)
+-- // 3. SMART TOGGLE ENGINE (Fix for "Button" style bases)
 RunService.Heartbeat:Connect(function()
     if _G.AutoLock or _G.AutoAllow then
         for _, v in pairs(Workspace:GetDescendants()) do
-            if v:IsA("ClickDetector") then
-                local n = v.Parent.Name:lower()
-                -- Check if button is in YOUR base (adjusts to 'Steal a Brainrot' tycoon style)
-                if v.Parent:FindFirstChild("TouchInterest") or v.Parent:IsA("Part") then
-                    if _G.AutoLock and (n:find("lock") or n:find("close")) then
-                        fireclickdetector(v)
+            -- Look for ClickDetectors OR ProximityPrompts
+            if v:IsA("ClickDetector") or v:IsA("ProximityPrompt") then
+                local parent = v.Parent
+                local n = parent.Name:lower()
+                
+                -- AUTO ALLOW logic (Only clicks if not already green/on)
+                if _G.AutoAllow and (n:find("allow") or n:find("friend")) then
+                    if parent.Color ~= Color3.fromRGB(0, 255, 0) then -- If not green
+                        if v:IsA("ClickDetector") then fireclickdetector(v) else fireproximityprompt(v) end
                     end
-                    if _G.AutoAllow and (n:find("allow") or n:find("friend")) then
-                        fireclickdetector(v)
+                end
+                
+                -- AUTO LOCK logic (Only clicks if base is open/red)
+                if _G.AutoLock and (n:find("lock") or n:find("close")) then
+                    if parent.Color ~= Color3.fromRGB(255, 0, 0) then -- If not red
+                        if v:IsA("ClickDetector") then fireclickdetector(v) else fireproximityprompt(v) end
                     end
                 end
             end
@@ -76,13 +75,9 @@ end)
 if PlayerGui:FindFirstChild("RonaldRealHub") then PlayerGui.RonaldRealHub:Destroy() end
 local sg = Instance.new("ScreenGui", PlayerGui); sg.Name = "RonaldRealHub"; sg.ResetOnSpawn = false
 local frame = Instance.new("Frame", sg)
-frame.Size = UDim2.fromOffset(260, 480); frame.Position = UDim2.fromScale(0.5, 0.5); frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Size = UDim2.fromOffset(260, 400); frame.Position = UDim2.fromScale(0.5, 0.5); frame.AnchorPoint = Vector2.new(0.5, 0.5)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20); frame.Active, frame.Draggable = true, true
 Instance.new("UIStroke", frame).Color = Color3.fromRGB(0, 200, 255); Instance.new("UICorner", frame)
-
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 40); title.Text = "ronaldothegond real sab hub"; title.TextColor3 = Color3.fromRGB(0, 220, 255)
-title.BackgroundTransparency = 1; title.Font = Enum.Font.GothamBold; title.TextSize = 11
 
 local function makeBtn(txt, y, cb, color)
     local b = Instance.new("TextButton", frame); b.Size = UDim2.new(1, -20, 0, 32); b.Position = UDim2.new(0, 10, 0, y)
@@ -91,7 +86,6 @@ local function makeBtn(txt, y, cb, color)
     b.MouseButton1Click:Connect(function() cb(b) end); return b
 end
 
--- // BUTTONS
 makeBtn("REJOIN SERVER", 50, function() TeleportService:Teleport(game.PlaceId, LocalPlayer) end, Color3.fromRGB(0, 150, 100))
 
 makeBtn("PLAYER ESP: OFF", 90, function(b) 
@@ -105,24 +99,20 @@ makeBtn("X-RAY Walls: OFF", 130, function(b)
     b.Text = "X-RAY Walls: " .. (_G.Xray and "ON" or "OFF")
 end)
 
-makeBtn("TIMER ESP: OFF", 170, function(b) 
-    _G.TimerESP = not _G.TimerESP 
-    b.Text = "TIMER ESP: " .. (_G.TimerESP and "ON" or "OFF")
-end)
-
-makeBtn("AUTO-ALLOW FRIENDS: OFF", 210, function(b)
+makeBtn("AUTO-ALLOW FRIENDS: OFF", 170, function(b)
     _G.AutoAllow = not _G.AutoAllow
     b.Text = "AUTO-ALLOW: " .. (_G.AutoAllow and "ON" or "OFF")
+    b.BackgroundColor3 = _G.AutoAllow and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(0, 200, 255)
 end)
 
-makeBtn("AUTO-LOCK BASE: OFF", 250, function(b)
+makeBtn("AUTO-LOCK BASE: OFF", 210, function(b)
     _G.AutoLock = not _G.AutoLock
     b.Text = "AUTO-LOCK: " .. (_G.AutoLock and "ON" or "OFF")
+    b.BackgroundColor3 = _G.AutoLock and Color3.fromRGB(200, 0, 50) or Color3.fromRGB(0, 200, 255)
 end)
 
-makeBtn("ronaldothegond", 430, function() 
+makeBtn("ronaldothegond", 350, function() 
     LocalPlayer:Kick("ronaldothegond saved ur brainrots from getting stolen") 
 end, Color3.fromRGB(150, 0, 255))
 
-Notify("Ronald Hub", "V101 Loaded Successfully!")
-PlayDing()
+Notify("Ronald Hub", "V101.1 Loaded - Smart Toggle Active")
