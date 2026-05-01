@@ -8,17 +8,14 @@ local TeleportService = game:GetService("TeleportService")
 
 -- // 1. FIXED AUTOLOADER
 local function SafeRejoin()
-    -- Create the exact command Delta needs to run again
+    -- Wait command ensures script doesn't execute before the game is ready
     local loadCommand = 'repeat task.wait() until game:IsLoaded(); loadstring(game:HttpGet("' .. GITHUB_LINK .. '"))()'
     
-    -- Attempting to queue the script for the next server
     if queue_on_teleport then 
         queue_on_teleport(loadCommand) 
     end
     
-    -- Teleport with a small delay to allow the queue to register
     task.wait(0.5)
-    
     local success, err = pcall(function()
         local tpOptions = Instance.new("TeleportOptions")
         tpOptions.ServerInstanceId = game.JobId
@@ -78,3 +75,4 @@ makeBtn("REJOIN + AUTOLOAD", 50, SafeRejoin, Color3.fromRGB(0, 150, 100))
 makeBtn("ronaldothegond", 95, function() 
     LocalPlayer:Kick("ronaldothegond saved ur brainrots from getting stolen") 
 end, Color3.fromRGB(150, 0, 255))
+
